@@ -100,6 +100,7 @@ struct Params {
     HeuristicParams Heuristic;
 };
 
+// velodyne适配pcl的点云类型
 namespace velodyne_ros {
   struct EIGEN_ALIGN16 Point {
       PCL_ADD_POINT4D;

@@ -3,6 +3,7 @@
 // SLAM libraries
 #include "use-ikfom.hpp"
 #include "ikd_Tree.h"
+#include "Headers/Common.hpp"
 #endif
 
 class Mapper {

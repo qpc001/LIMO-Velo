@@ -1,3 +1,4 @@
+#include "Headers/Common.hpp"
 namespace Conversions {
     std::uint64_t sec2Microsec(double t);
     double microsec2Sec(std::uint64_t t);

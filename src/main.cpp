@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     nh.param<double>("LiDAR_noise", Config.LiDAR_noise, 0.001);
     nh.param<double>("min_dist", Config.min_dist, 3.);
     nh.param<double>("imu_rate", Config.imu_rate, 400);
-    nh.param<double>("degeneracy_threshold", Config.degeneracy_threshold, 5.d);
+    nh.param<double>("degeneracy_threshold", Config.degeneracy_threshold, 5.);
     nh.param<bool>("print_degeneracy_values", Config.print_degeneracy_values, false);
     nh.param<double>("full_rotation_time", Config.full_rotation_time, 0.1);
     nh.param<double>("empty_lidar_time", Config.empty_lidar_time, 20.);
@@ -55,13 +55,15 @@ int main(int argc, char** argv) {
     nh.param<std::vector<float>>("I_Rotation_L", Config.I_Rotation_L, std::vector<float> (9, 0.));
 
     // Objects
-    Publishers publish(nh);
+    Publishers publish(nh); // 创建一系列publisher
+    // 创建几个模块，单例模式
     Accumulator& accum = Accumulator::getInstance();
     Compensator comp = Compensator ();
     Mapper& map = Mapper::getInstance();
     Localizator& KF = Localizator::getInstance();
 
     // Subscribers
+    // 订阅激光、IMU
     ros::Subscriber lidar_sub = nh.subscribe(
         Config.points_topic, 1000,
         &Accumulator::receive_lidar, &accum
@@ -79,15 +81,16 @@ int main(int argc, char** argv) {
     double t2 = -1;
 
     while (ros::ok()) {
-        
+        // 如果有足够的imu数据，is_ready设置为true，会进入循环
         while (accum.ready()) {
-            
+            // 是否需要实时？
             if (Config.real_time) {
                 // Should be t2 = ros::Time::now() - delay
                 double latest_imu_time = accum.BUFFER_I.front().time;
                 t2 = latest_imu_time - Config.real_time_delay; 
             } else {
-                if (clock < 0) clock = accum.initial_time;
+                // 刚开始时，clock = -1
+                if (clock < 0) clock = accum.initial_time;  // 给clock赋值
                 t2 = clock - Config.real_time_delay; 
                 clock += accum.delta;
             }
@@ -96,22 +99,26 @@ int main(int argc, char** argv) {
             rate = accum.refine_delta(Config.Heuristic, t2);
             
             // Define t1
-            double t1 = std::max(KF.last_time_updated, t2 - accum.delta);
-            if (KF.last_time_updated < 0) t1 = t2 - accum.delta;
+            double t1 = std::max(KF.last_time_updated, t2 - accum.delta);   // t1: 上一次更新的时间?
+            if (KF.last_time_updated < 0) t1 = t2 - accum.delta;    // 如果还没有优化过，即第一次，直接赋值t1= t2 - accum.delta
 
             // Integrate from t1 to t2
-            KF.propagate_to(t2);
+            KF.propagate_to(t2);    // imu传播
 
             // Field of view too small (relevant for real-time)
-            if (t2 - t1 < accum.delta - 1e-6) break;
+            if (t2 - t1 < accum.delta - 1e-6) break;    // 如果t2 - t1太小了，时间太短，激光数据不够
 
+            // 建图 或者 定位
             if (Config.mapping_online or (not Config.mapping_online and map.exists())) {
                 // Compensated pointcloud given a path
+                // 去畸变， 将每一个点投影到 t2时刻下的lidar坐标系
                 Points compensated = comp.compensate(t1, t2);
+                // 0.5, 0.5, 0.5的voxel降采样
                 Points ds_compensated = comp.downsample(compensated);
                 if (ds_compensated.size() < Config.MAX_POINTS2MATCH) break; 
 
                 // Localize points in map
+                // 使用去畸变后的点云进行状态更新
                 KF.update(ds_compensated, t2);
                 State Xt2 = KF.latest_state();
                 accum.add(Xt2, t2);

@@ -1,3 +1,4 @@
+#include "Headers/Common.hpp"
 class Accumulator {
     public:
         Buffer<Point> BUFFER_L;

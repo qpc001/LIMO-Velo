@@ -1,3 +1,4 @@
+#include "Headers/Common.hpp"
 class Compensator {
     public:
         Compensator() {};

@@ -1,3 +1,4 @@
+#include "Headers/Common.hpp"
 namespace Processor {
     void fill(pcl::PointCloud<full_info::Point>&, const Points&);
 }

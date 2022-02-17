@@ -1,3 +1,4 @@
+#include "Headers/Common.hpp"
 class PointCloudProcessor {
     
     // Given a PointCloud, process it to push to the buffer

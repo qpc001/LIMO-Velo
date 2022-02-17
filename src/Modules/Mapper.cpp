@@ -43,7 +43,7 @@ extern struct Params Config;
             matches.reserve(points.size());
             
             omp_set_num_threads(MP_PROC_NUM);
-            #pragma omp parallel for
+//            #pragma omp parallel for
             for (Point p : points) {
                 // Direct approach: we match the point with a plane on the map
                 Match match = this->match_plane(X * X.I_Rt_L() * p);

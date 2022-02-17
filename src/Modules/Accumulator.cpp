@@ -31,16 +31,21 @@ extern struct Params Config;
             this->push(cnt);
         }
 
+        // 拷贝点云
         void Accumulator::add(Points points) {
             for (Point p : points) this->push(p);
         }
 
         // Receive from topics
+        // 激光雷达回调
         void Accumulator::receive_lidar(const PointCloud_msg& msg) {
+            // 创建临时对象PointCloudProcessor，将点云转换为自定义类型Point，并且完成降采样
             PointCloudProcessor processed(msg);
+            // 拷贝点云到Accumulator::BUFFER_L
             this->add(processed.points);
         }
 
+        // msg类型转换，拷贝imu数据到Accumulator::BUFFER_I
         void Accumulator::receive_imu(const IMU_msg& msg) {
             IMU imu(msg);
             this->add(imu);
@@ -90,6 +95,7 @@ extern struct Params Config;
             if (this->is_ready) return true;
             
             // Ready if there's enough IMUs to fit the delay
+            // 如果有足够的imu数据，is_ready设置为true，并且设置initial_time
             if (this->enough_imus()) {
                 this->set_initial_time();
                 return this->is_ready = true;

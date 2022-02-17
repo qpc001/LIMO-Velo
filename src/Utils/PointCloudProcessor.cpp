@@ -15,15 +15,30 @@ extern struct Params Config;
 
 // class PointCloudProcessor
     // public:
+/**
+ * @brief PointCloudProcessor::PointCloudProcessor
+ * 构造函数
+ * @param msg
+ */
         PointCloudProcessor::PointCloudProcessor(const PointCloud_msg& msg) {
+            // Points 为 std::deque<Point>
+            // 其中Point 是自定义的一个类
             Points points = this->msg2points(msg);
+            // 简单粗暴降采样，同时去除比较远的点
             Points downsample_points = this->downsample(points);
             
+            // 按点的时间戳从小到大排序
             this->sort_points(downsample_points);
             this->points = downsample_points;
         }
 
     // private:
+        /**
+         * @brief PointCloudProcessor::msg2points
+         * 将ros的点云msg ， 根据激光雷达类型，转换成自定义类型 Points
+         * @param msg
+         * @return
+         */
         Points PointCloudProcessor::msg2points(const PointCloud_msg& msg) {
             if (Config.LiDAR_type == LIDAR_TYPE::Velodyne) return this->velodynemsg2points(msg);
             if (Config.LiDAR_type == LIDAR_TYPE::Hesai) return this->hesaimsg2points(msg);
@@ -36,6 +51,12 @@ extern struct Params Config;
         }
 
         // Velodyne specific
+        /**
+         * @brief PointCloudProcessor::velodynemsg2points
+         * 对于velodyne，直接从ros msg 转pcl， 然后pcl 再转 Points
+         * @param msg
+         * @return
+         */
             Points PointCloudProcessor::velodynemsg2points(const PointCloud_msg& msg) {
                 pcl::PointCloud<velodyne_ros::Point>::Ptr raw_pcl(new pcl::PointCloud<velodyne_ros::Point>());
                 pcl::fromROSMsg(*msg, *raw_pcl);
@@ -87,6 +108,9 @@ extern struct Params Config;
                 return 0.d;
             }
 
+            /**
+             *@brief: pcl类型点云转Points
+             */
         template <typename PointType>
         Points PointCloudProcessor::to_points(const typename pcl::PointCloud<PointType>& pcl) {
             Points pts;
@@ -102,7 +126,9 @@ extern struct Params Config;
             Points downsampled;
             int ds_counter = 0;
 
+            // 遍历点云
             for (Point p : points) {
+                // 简单粗暴降采样，同时去除比较远的点
                 bool downsample_point = Config.ds_rate <= 1 or ++ds_counter%Config.ds_rate == 0; 
                 if (downsample_point and Config.min_dist < p.norm()) downsampled.push_back(p);
             }

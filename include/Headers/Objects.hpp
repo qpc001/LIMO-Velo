@@ -1,3 +1,4 @@
+#include "Headers/Common.hpp"
 extern struct Params Config;
 
 template <typename ContentType>
@@ -73,6 +74,8 @@ class Point {
         }
 
         // Delegate constructor for any point type
+        // 这里的操作是： 先构造一次点Point（赋值第一个点的时间戳）， 然后加上偏移时间
+        // begin_time：相对于第一个点的时间偏移
         template <typename PointType>
         Point(const PointType& p, double begin_time) : Point (p) {
             this->time += begin_time;
@@ -208,6 +211,13 @@ class IMU {
             this->time = imu.header.stamp.toSec();
         }
 
+        /**
+         * @brief IMU
+         * 去畸变时用的
+         * @param a
+         * @param w
+         * @param time
+         */
         IMU (const Eigen::Vector3f& a, const Eigen::Vector3f& w, double time) {
             this->a = a;
             this->w = w;
