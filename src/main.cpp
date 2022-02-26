@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
             if (KF.last_time_updated < 0) t1 = t2 - accum.delta;    // 如果还没有优化过，即第一次，直接赋值t1= t2 - accum.delta
 
             // Integrate from t1 to t2
-            KF.propagate_to(t2);    // imu传播
+            KF.propagate_to(t1, t2);    // imu传播
 
             // Field of view too small (relevant for real-time)
             if (t2 - t1 < accum.delta - 1e-6) break;    // 如果t2 - t1太小了，时间太短，激光数据不够
@@ -125,14 +125,21 @@ int main(int argc, char** argv) {
                 publish.state(Xt2, false);
                 publish.tf(Xt2);
 
+                auto imu = accum.get_next_imu(t2);
+                printf("w [%f] x [%f] y [%f] z [%f]\n", imu.q.w(), imu.q.x(), imu.q.y(), imu.q.z());
+
+                Eigen::Quaterniond q_pose_to_map= Eigen::Quaterniond(Xt2.R.cast<double>());
+                std::cout<< (imu.q*q_pose_to_map.inverse()).coeffs() <<std::endl;
+
                 // Publish compensated
                 Points global_compensated = Xt2 * Xt2.I_Rt_L() * ds_compensated;
+                Points global_compensated_not_ds = Xt2 * Xt2.I_Rt_L() * compensated;
                 publish.pointcloud(global_compensated, true);
 
                 // Map at the same time (online)
                 if (Config.mapping_online) {
                     map.add(global_compensated, t2, true);
-                    publish.pointcloud(global_compensated, false);
+                    publish.pointcloud(global_compensated_not_ds, false);
                     
                     if (Config.print_extrinsics) publish.extrinsics(Xt2);
                 }

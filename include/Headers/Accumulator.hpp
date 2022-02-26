@@ -97,7 +97,10 @@ class Accumulator {
             }
 
             // If not a state found, push an empty one at t
-            this->add(ContentType(), t);
+            {
+                ROS_ERROR("Found a state before [%f] failed.", t);
+                this->add(ContentType(), t);
+            }
             return source.front();
         }
 

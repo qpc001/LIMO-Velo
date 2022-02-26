@@ -56,9 +56,24 @@ extern struct Params Config;
             }
         }
 
-        void Localizator::propagate_to(double t) {
-            if (this->last_time_integrated < 0) this->last_time_integrated = t;
+        void Localizator::propagate_to(double t1, double t) {
+            // 取IMU数据 [上一次积分时间，t2]
+            // 当第一次时，this->last_time_integrated = -1, 所以获取的是 t2之前所有imu数据
+            // Get new IMUs
             IMUs imus = Accumulator::getInstance().get_imus(this->last_time_integrated, t);
+
+            // Initialize
+            if (this->last_time_integrated < 0) {
+                // imus.back() t2之前的前一个数据
+                if (imus.front().has_orientation()) {
+                    imus = Accumulator::getInstance().get_imus(t1, t);
+                    this->init_IKFoM_orientation(imus.front());    // imus.front() t1之后的第一个imu数据
+                }
+                State init_state_prev = initial_state_;
+                init_state_prev.time -= 0.01;
+                Accumulator::getInstance().add(init_state_prev);
+                this->last_time_integrated = t;
+            }
             
             // Integrate every new IMU between last time and now
             for (IMU imu : imus) {
@@ -73,10 +88,20 @@ extern struct Params Config;
             }
         }
 
+        State Localizator::initial_state() {
+            return initial_state_;
+        }
+
         State Localizator::latest_state() {
-            // If no updates, return empty state
-            if (this->last_time_updated < 0)
-                return State (this->last_time_integrated);
+            // If no updates, return propogate state
+            if (this->last_time_updated < 0){
+                ROS_WARN("this->last_time_updated < 0 , %f , %f ,%f" , this->get_x().pos.x(), this->get_x().pos.y(), this->get_x().pos.z());
+                if(initial_state_.time <= 0){
+                    return State (this->last_time_integrated);
+                }else{
+                    return State (this->get_x(), this->last_time_integrated);
+                }
+            }
 
             return State(
                 this->get_x(),
@@ -121,6 +146,7 @@ extern struct Params Config;
             init_state.offset_R_L_I = SO3(Eigen::Map<Eigen::Matrix3f>(Config.I_Rotation_L.data(), 3, 3).cast<double>());
             init_state.offset_T_L_I = Eigen::Vector3f(Config.I_Translation_L.data()).cast<double>();
             this->IKFoM_KF.change_x(init_state);
+            initial_state_ = State(init_state, 0);
 
             esekfom::esekf<state_ikfom, 12, input_ikfom>::cov init_P = this->IKFoM_KF.get_P();
             init_P.setIdentity();
@@ -133,11 +159,20 @@ extern struct Params Config;
             this->IKFoM_KF.change_P(init_P);
         }
 
+        void Localizator::init_IKFoM_orientation(const IMU &imu)
+        {
+            state_ikfom current_state = this->IKFoM_KF.get_x();
+            current_state.rot = imu.q.cast<double>();
+            initial_state_ = State(current_state, imu.time);
+            this->IKFoM_KF.change_x(current_state);
+        }
+
         const state_ikfom& Localizator::get_x() const {
             return this->IKFoM_KF.get_x();
         }
 
         void Localizator::propagate(const IMU& imu) {
+            // 取IMU数据，构造input_ikfom
             input_ikfom in;
             in.acc = imu.a.cast<double>();
             in.gyro = imu.w.cast<double>();

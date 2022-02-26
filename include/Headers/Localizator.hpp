@@ -16,7 +16,7 @@ class Localizator {
 
     private:
         esekfom::esekf<state_ikfom, 12, input_ikfom> IKFoM_KF;
-    
+        State initial_state_;
     // Methods
 
     public:
@@ -24,12 +24,14 @@ class Localizator {
         void update(const Points&, double time);
         void calculate_H(const state_ikfom&, const Matches&, Eigen::MatrixXd& H, Eigen::VectorXd& h);
         
-        void propagate_to(double t);
+        void propagate_to(double t1, double t);
+        State initial_state();
         State latest_state();
 
     private:
         void init_IKFoM();
         void init_IKFoM_state();
+        void init_IKFoM_orientation(const IMU& imu);
         void IKFoM_update(const Points&);
         
         void propagate(const IMU& imu);

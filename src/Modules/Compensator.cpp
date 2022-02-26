@@ -25,6 +25,7 @@
             // 得到了before t1 and after t2的状态，时间区间为[ < t1, > t2]
             States path_taken = this->path(t1, t2);
             assert (path_taken.size() >= 2);
+            ROS_WARN("Compensator::compensate path States size[%zu]", path_taken.size());
 
             // Compensated points given a path
             // 得到t2时刻的状态
@@ -47,6 +48,7 @@
             // Get states just before t1 to t2
             // 获取[t1,t2]时间段内的所有状态
             States states = accum.get_states(t1, t2);
+            ROS_WARN("Compensator::path States size[%zu]", states.size());
             // 然后在最前面加上t1时刻的前一个状态
             states.push_front(accum.get_prev_state(t1));
 
